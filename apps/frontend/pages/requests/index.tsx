@@ -1103,7 +1103,7 @@ function RequestCard({
                       )}
                       
                       {/* Edit Button for Pending Applications */}
-                      {currentApplication?.status === 'pending' && (
+                      {/* {currentApplication?.status === 'pending' && (
                         <button
                           onClick={() => parentSetEditingApplication(currentApplication)}
                           className="px-3 py-2 bg-blue-500 text-white rounded-md font-medium hover:bg-blue-600 transition-colors flex items-center justify-center space-x-1 text-sm"
@@ -1113,10 +1113,10 @@ function RequestCard({
                           </svg>
                           <span>Edit</span>
                         </button>
-                      )}
+                      )} */}
                       
                       {/* Cancel Button for Pending Applications */}
-                      {currentApplication?.status === 'pending' && (
+                      {/* {currentApplication?.status === 'pending' && (
                         <button
                           onClick={() => {
                             if (confirm('Are you sure you want to cancel your offer? Your offer will be removed and you will be able to submit a new offer.')) {
@@ -1129,9 +1129,9 @@ function RequestCard({
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                           </svg>
-                          <span>Cancel Offer</span>
+                          <span>Cancel Offerooooooo</span>
                         </button>
-                      )}
+                      )} */}
                     </div>
                   </div>
                 </div>

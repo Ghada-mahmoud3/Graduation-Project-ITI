@@ -17,11 +17,29 @@ export class ReviewsService {
   async createReview(createReviewDto: CreateReviewDto, user: UserDocument) {
     const { requestId, revieweeId, reviewType, rating, feedback } = createReviewDto;
 
+    console.log('🌟 Creating review with data:', {
+      requestId,
+      revieweeId,
+      reviewType,
+      rating,
+      feedback,
+      reviewerId: user._id.toString()
+    });
+
     // Verify the request exists and is completed
     const request = await this.requestModel.findById(requestId).exec();
     if (!request) {
+      console.log('❌ Request not found:', requestId);
       throw new NotFoundException('Request not found');
     }
+
+    console.log('✅ Found request:', {
+      id: request._id.toString(),
+      title: request.title,
+      status: request.status,
+      patientId: request.patientId.toString(),
+      nurseId: request.nurseId?.toString()
+    });
 
     if (request.status !== RequestStatus.COMPLETED) {
       throw new BadRequestException('Can only review completed requests');
@@ -91,6 +109,17 @@ export class ReviewsService {
     }
 
     const review = await this.reviewModel.create(reviewData);
+
+    console.log('✅ Review created successfully:', {
+      id: review._id.toString(),
+      requestId: review.requestId.toString(),
+      reviewerId: review.reviewerId.toString(),
+      revieweeId: review.revieweeId?.toString(),
+      reviewType: review.reviewType,
+      reviewerRole: review.reviewerRole,
+      rating: review.rating,
+      feedback: review.feedback
+    });
 
     return this.formatReviewResponse(review);
   }
@@ -260,6 +289,87 @@ export class ReviewsService {
     }
 
     return { canReview: true };
+  }
+
+  async getReviewsAboutNurse(nurseId: string, page: number = 1, limit: number = 10) {
+    console.log(`🔍 Getting reviews about nurse: ${nurseId}`);
+    
+    // Verify nurse exists
+    const nurse = await this.userModel.findById(nurseId).exec();
+    if (!nurse) {
+      throw new NotFoundException('Nurse not found');
+    }
+
+    if (nurse.role !== UserRole.NURSE) {
+      throw new BadRequestException('User is not a nurse');
+    }
+
+    // Calculate pagination
+    const skip = (page - 1) * limit;
+
+    // Find all reviews where this nurse is the reviewee (reviews written about them)
+    const query = {
+      revieweeId: nurseId,
+      reviewType: ReviewType.USER_TO_USER,
+      reviewerRole: ReviewerRole.PATIENT, // Only patient reviews about nurses
+      isActive: true
+    };
+
+    console.log('🔍 Query for nurse reviews:', query);
+
+    const [reviews, total] = await Promise.all([
+      this.reviewModel
+        .find(query)
+        .populate('reviewerId', 'name email')
+        .populate('requestId', 'title description serviceType scheduledDate')
+        .sort({ submittedAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+      this.reviewModel.countDocuments(query).exec()
+    ]);
+
+    console.log(`✅ Found ${reviews.length} reviews about nurse ${nurseId}`);
+
+    // Calculate stats
+    const averageRating = reviews.length > 0 
+      ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
+      : 0;
+
+    const formattedReviews = reviews.map(review => ({
+      id: review._id.toString(),
+      requestId: review.requestId.toString(),
+      rating: review.rating,
+      feedback: review.feedback,
+      submittedAt: review.submittedAt,
+      createdAt: review.createdAt,
+      reviewer: {
+        id: (review as any).reviewerId._id.toString(),
+        name: (review as any).reviewerId.name,
+        email: (review as any).reviewerId.email
+      },
+      request: {
+        id: (review as any).requestId._id.toString(),
+        title: (review as any).requestId.title,
+        description: (review as any).requestId.description,
+        serviceType: (review as any).requestId.serviceType,
+        scheduledDate: (review as any).requestId.scheduledDate
+      }
+    }));
+
+    return {
+      reviews: formattedReviews,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      },
+      stats: {
+        averageRating: Math.round(averageRating * 10) / 10,
+        totalReviews: total
+      }
+    };
   }
 
   private formatReviewResponse(review: ReviewDocument): any {

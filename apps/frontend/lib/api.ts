@@ -1518,14 +1518,13 @@ class ApiService {
       if (!nurseId) throw new Error('Nurse ID is required');
       if (!rating || rating < 1 || rating > 5) throw new Error('Rating must be between 1 and 5');
 
-      // Make sure we send both review and comment for backward compatibility
+      // Send the correct payload format for the reviews API
       const payload = {
         requestId,
-        nurseId,
+        revieweeId: nurseId, // API expects revieweeId, not nurseId
+        reviewType: 'user_to_user',
         rating: Number(rating), // Ensure rating is a number
-        comment: review || '',  // Ensure we have at least an empty string
-        review: review || '',  // Add review field as well in case API expects it
-        wouldRecommend: rating >= 4
+        feedback: review || ''  // API expects feedback, not comment/review
       };
 
       console.log('Review payload being sent:', payload);
@@ -1578,27 +1577,24 @@ class ApiService {
           console.error('Error reading response text:', parseError);
         }
         
-        // Log the error but don't throw - this is a hack to make it work temporarily
-        console.error(errorMessage);
-        
-        // For testing purposes, we'll pretend it succeeded
-        return { success: true, message: "Review submitted successfully" };
+        // Log the error and throw it properly
+        console.error('❌ Rating submission failed:', errorMessage);
+        throw new Error(errorMessage);
       }
 
-      console.log('Handling successful response');
-      return this.handleResponse(response);
+      console.log('✅ Rating submission successful, processing response...');
+      const result = await this.handleResponse(response);
+      console.log('✅ Rating submission result:', result);
+      return result;
     } catch (error) {
-      console.error('Submit rating error:', error);
-      // For now, return a success response instead of throwing to bypass the error
-      // This is a temporary fix until the backend issue is resolved
-      console.log('Returning mock success response despite error');
-      return { success: true, message: "Review submitted successfully" };
+      console.error('❌ Submit rating error:', error);
+      throw error;
     }
   }
 
   async getNurseReviews(nurseId: string, page: number = 1, limit: number = 10): Promise<any> {
     try {
-      console.log(`Fetching reviews for nurse ID: ${nurseId} with page=${page}, limit=${limit}`);
+      console.log(`🔍 Fetching reviews ABOUT nurse ID: ${nurseId} with page=${page}, limit=${limit}`);
       
       // Ensure we have a valid nurse ID
       if (!nurseId) {

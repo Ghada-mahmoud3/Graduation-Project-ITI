@@ -58,7 +58,7 @@ export default function CompletedRequests() {
     const refreshInterval = setInterval(() => {
       console.log('Auto-refresh: checking for new reviews...');
       loadAllReviews(completedRequests);
-    }, 30000); // Check every 30 seconds
+    }, 10000); // Check every 10 seconds
     
     return () => {
       console.log('Clearing review refresh interval');
@@ -85,14 +85,18 @@ export default function CompletedRequests() {
         return;
       }
       
-      console.log('Attempting to load reviews for nurse:', user.id);
+      console.log('Attempting to load reviews ABOUT nurse:', {
+        userId: user.id,
+        userRole: user.role,
+        userName: user.name
+      });
       
-      // Get all reviews in one call with a higher limit
+      // Get all reviews written by patients about this nurse
       const reviewsData = await apiService.getNurseReviews(user.id, 1, 1000);
-      console.log('Nurse reviews response:', reviewsData);
+      console.log('Reviews about nurse response:', reviewsData);
       
-      // Ensure we have an array to work with
-      const reviewsArray = reviewsData?.data || [];
+      // The new API returns reviews in the 'reviews' property
+      const reviewsArray = reviewsData?.reviews || reviewsData?.data || [];
       const reviewsList = Array.isArray(reviewsArray) ? reviewsArray : [];
       console.log('Reviews list from API:', reviewsList, 'Total reviews:', reviewsList.length);
       
@@ -108,37 +112,54 @@ export default function CompletedRequests() {
       const requestIds = completedRequests.map(req => req.request.id);
       console.log('Looking for reviews for these request IDs:', requestIds);
       
-      // Map reviews by request ID with detailed logging and extensive property checking
+      // Also log the structure of completed requests for debugging
+      console.log('Completed requests structure:', completedRequests.map(req => ({
+        applicationId: req.id,
+        requestId: req.request.id,
+        requestTitle: req.request.title,
+        patientName: req.request.patient?.name
+      })));
+      
+      // Map reviews by request ID - the new API structure is cleaner
       reviewsList.forEach((review: any) => {
         console.log('Processing review:', review);
         
-        // Check all possible paths to request ID in the review object
-        if (review.request?.id) {
-          console.log(`Found review for request ID via review.request.id: ${review.request.id}`);
-          reviewsMap[review.request.id] = review;
-        } else if (review.requestId) {
-          console.log(`Found review via requestId property: ${review.requestId}`);
-          reviewsMap[review.requestId] = review;
-        } else if (review.request_id) {
-          console.log(`Found review via request_id property: ${review.request_id}`);
-          reviewsMap[review.request_id] = review;
-        } else if (review.data?.request?.id) {
-          console.log(`Found review via data.request.id: ${review.data.request.id}`);
-          reviewsMap[review.data.request.id] = review;
+        // The new API returns requestId directly and request object with id
+        let requestId = null;
+        
+        if (review.requestId) {
+          requestId = review.requestId;
+          console.log(`✅ Found review for request ID: ${requestId}`);
+        } else if (review.request?.id) {
+          requestId = review.request.id;
+          console.log(`✅ Found review for request ID via request.id: ${requestId}`);
         } else {
-          // Try to find request ID in any property
-          const reviewStr = JSON.stringify(review);
-          console.log('No direct request ID found, searching in full object');
-          
-          // Search in completed requests to find matching request by any property
-          for (const req of completedRequests) {
-            const reqId = req.request.id;
-            if (reviewStr.includes(reqId)) {
-              console.log(`Found potential match for request ID ${reqId} in review data`);
-              reviewsMap[reqId] = review;
-              break;
-            }
-          }
+          console.log('❌ Could not find request ID in review object:', review);
+          return;
+        }
+        
+        // Store the review with better structure
+        reviewsMap[requestId] = {
+          id: review.id,
+          rating: review.rating,
+          feedback: review.feedback,
+          submittedAt: review.submittedAt,
+          reviewer: review.reviewer,
+          request: review.request
+        };
+        
+        console.log(`📝 Mapped review for request ${requestId}:`, reviewsMap[requestId]);
+        
+        // Check if this requestId matches any of our completed requests
+        const matchingRequest = completedRequests.find(req => req.request.id === requestId);
+        if (matchingRequest) {
+          console.log(`✅ Found matching completed request for review:`, {
+            requestId,
+            requestTitle: matchingRequest.request.title,
+            applicationId: matchingRequest.id
+          });
+        } else {
+          console.log(`❌ No matching completed request found for review requestId: ${requestId}`);
         }
       });
       
@@ -490,7 +511,13 @@ export default function CompletedRequests() {
                       {/* Improved Rating display directly in the grid */}
                       <div className="col-span-2">
                         <div className="flex justify-between items-center">
-                          <p className="text-sm text-gray-500">Patient Rating</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm text-gray-500">Patient Rating</p>
+                            <div className="flex items-center gap-1 text-xs text-green-600">
+                              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                              <span>Auto-updating every 10s</span>
+                            </div>
+                          </div>
                           <button 
                             onClick={() => loadAllReviews(completedRequests)}
                             disabled={refreshingReviews}

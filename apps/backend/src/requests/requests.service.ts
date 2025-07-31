@@ -378,6 +378,34 @@ export class RequestsService {
     request.status = status;
     await request.save();
 
+    // Send notifications based on status change
+    try {
+      const patient = await this.userModel.findById(request.patientId).exec();
+      const nurse = request.nurseId ? await this.userModel.findById(request.nurseId).exec() : null;
+
+      if (status === RequestStatus.COMPLETED && patient && nurse) {
+        // Notify nurse that patient marked request as completed
+        await this.notificationsService.notifyRequestMarkedCompleted(
+          nurse._id.toString(),
+          patient.name || 'A patient',
+          request._id.toString(),
+          request.title
+        );
+      } else if (status === RequestStatus.CANCELLED && nurse && patient) {
+        // Notify nurse that request was cancelled
+        await this.notificationsService.notifyRequestCancelled(
+          nurse._id.toString(),
+          patient.name || 'A patient',
+          request._id.toString(),
+          request.title,
+          cancellationReason
+        );
+      }
+    } catch (notificationError) {
+      console.error('Failed to send request status notification:', notificationError);
+      // Don't fail the status update if notification fails
+    }
+
     return {
       message: 'Request status updated successfully',
       request: {

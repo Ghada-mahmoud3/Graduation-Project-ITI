@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/auth';
+import { useNotifications } from '../hooks/useNotifications';
 import PatientLayout from '../components/PatientLayout';
 
 interface Notification {

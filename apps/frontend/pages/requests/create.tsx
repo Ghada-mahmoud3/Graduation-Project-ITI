@@ -397,7 +397,7 @@ export default function CreateRequest() {
           </div>
 
           {/* Image Upload Section */}
-          <div>
+          {/* <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Medical Images (Optional)
             </label>
@@ -410,7 +410,7 @@ export default function CreateRequest() {
               maxSizePerImage={5}
               initialImages={formData.images}
             />
-          </div>
+          </div> */}
 
           <div className="flex justify-end space-x-4">
             <button

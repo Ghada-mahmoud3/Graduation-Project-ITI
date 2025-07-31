@@ -9,6 +9,7 @@ import { JwtStrategy } from './jwt.strategy';
 import { User, UserSchema } from '../schemas/user.schema';
 import { NurseProfile, NurseProfileSchema } from '../schemas/nurse-profile.schema';
 import { EmailModule } from '../email/email.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { EmailModule } from '../email/email.module';
       { name: NurseProfile.name, schema: NurseProfileSchema },
     ]),
     EmailModule,
+    NotificationsModule,
   ],
   providers: [AuthService, JwtStrategy],
   controllers: [AuthController],

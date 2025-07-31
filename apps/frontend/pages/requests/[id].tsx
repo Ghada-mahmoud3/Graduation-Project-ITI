@@ -5,6 +5,7 @@ import { Card, LoadingSpinner, StatusBadge } from '../../components/Layout';
 import PatientLayout from '../../components/PatientLayout';
 import { apiService } from '../../lib/api';
 import ImageGallery from '../../components/ImageGallery';
+import ApplicationsList from '../../components/ApplicationsList';
 
 interface RequestDetails {
   id: string;
@@ -293,6 +294,18 @@ export default function RequestDetails() {
             )}
           </div>
         </div>
+
+        {/* Applications Section - Only show for patients and pending requests */}
+        {user?.role === 'patient' && request.status === 'pending' && (
+          <ApplicationsList 
+            requestId={request.id} 
+            requestTitle={request.title}
+            onApplicationUpdate={() => {
+              // Refresh request data when application status changes
+              fetchRequest();
+            }}
+          />
+        )}
 
         {/* Status History */}
         <Card className="p-6">

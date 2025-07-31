@@ -205,6 +205,28 @@ export class NotificationsController {
     return this.notificationsService.clearAllNotifications(req.user._id);
   }
 
+  @Post('test')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Create a test notification (Development only)' })
+  @ApiResponse({ status: 201, description: 'Test notification created successfully' })
+  async createTestNotification(@Request() req: any, @Body() body: { title?: string; message?: string; type?: string }) {
+    const user = req.user;
+    
+    console.log('🧪 Creating test notification for user:', user._id.toString());
+    
+    return this.notificationsService.createNotification({
+      userId: user._id.toString(),
+      type: body.type || 'test',
+      title: body.title || '🧪 Test Notification',
+      message: body.message || 'This is a test notification to verify the system works correctly.',
+      priority: NotificationPriority.MEDIUM,
+      data: { 
+        isTest: true,
+        createdAt: new Date().toISOString()
+      }
+    });
+  }
+
   // Admin endpoints
   @Post('broadcast')
   @UseGuards(RolesGuard)

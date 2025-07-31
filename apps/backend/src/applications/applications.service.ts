@@ -66,20 +66,34 @@ export class ApplicationsService {
       status: ApplicationStatus.PENDING
     });
 
-    // Send notification to patient about new application
+    // Send enhanced notification to patient about new offer with price and time
     try {
       const patient = await this.userModel.findById(request.patientId).exec();
       if (patient) {
-        await this.notificationsService.notifyRequestApplication(
+        console.log('🔔 Sending nurse offer notification to patient:', patient._id.toString());
+        console.log('📋 Offer details:', {
+          nurseName: nurseUser.name,
+          requestTitle: request.title,
+          price: createApplicationDto.price,
+          estimatedTime: createApplicationDto.estimatedTime
+        });
+        
+        await this.notificationsService.notifyNurseOffer(
           patient._id.toString(),
           nurseUser._id.toString(),
           nurseUser.name || 'A nurse',
           request._id.toString(),
-          request.title
+          request.title,
+          createApplicationDto.price,
+          createApplicationDto.estimatedTime
         );
+        
+        console.log('✅ Nurse offer notification sent successfully to patient');
+      } else {
+        console.log('❌ Patient not found for notification');
       }
     } catch (notificationError) {
-      console.error('Failed to send application notification:', notificationError);
+      console.error('❌ Failed to send application notification:', notificationError);
       // Don't fail the application if notification fails
     }
 
@@ -116,6 +130,8 @@ export class ApplicationsService {
       .sort({ createdAt: -1 })
       .exec();
 
+    console.log(`📋 Found ${applications.length} applications for request ${requestId}`);
+    
     return applications.map(application => ({
       id: application._id,
       requestId: application.requestId,
@@ -126,7 +142,8 @@ export class ApplicationsService {
       price: application.price,
       estimatedTime: application.estimatedTime,
       status: application.status,
-      createdAt: application.createdAt
+      createdAt: application.createdAt,
+      updatedAt: application.updatedAt
     }));
   }
 
@@ -222,12 +239,15 @@ export class ApplicationsService {
 
       if (nurse && patient) {
         if (updateDto.status === ApplicationStatus.ACCEPTED) {
-          await this.notificationsService.notifyRequestAccepted(
+          console.log('🔔 Sending offer accepted notification to nurse:', nurse._id.toString());
+          await this.notificationsService.notifyOfferAccepted(
             nurse._id.toString(),
             patient.name || 'A patient',
             request._id.toString(),
-            request.title
+            request.title,
+            application.price
           );
+          console.log('✅ Offer accepted notification sent successfully');
         } else if (updateDto.status === ApplicationStatus.REJECTED) {
           await this.notificationsService.notifyRequestRejected(
             nurse._id.toString(),
@@ -266,6 +286,12 @@ export class ApplicationsService {
       throw new BadRequestException('Only pending applications can be updated');
     }
 
+    // Get request and patient info for notification
+    const request = await this.requestModel.findById(application.requestId).exec();
+    if (!request) {
+      throw new NotFoundException('Request not found');
+    }
+
     // Update the application
     const updatedApplication = await this.applicationModel.findByIdAndUpdate(
       applicationId,
@@ -276,6 +302,27 @@ export class ApplicationsService {
       },
       { new: true }
     );
+
+    // Send notification to patient about offer update
+    try {
+      const patient = await this.userModel.findById(request.patientId).exec();
+      if (patient) {
+        console.log('🔄 Sending offer update notification to patient:', patient._id.toString());
+        
+        await this.notificationsService.notifyOfferUpdated(
+          patient._id.toString(),
+          user.name || 'A nurse',
+          request._id.toString(),
+          request.title,
+          updateData.price,
+          updateData.estimatedTime
+        );
+        
+        console.log('✅ Offer update notification sent successfully');
+      }
+    } catch (notificationError) {
+      console.error('❌ Failed to send offer update notification:', notificationError);
+    }
 
     return {
       message: 'Application updated successfully',
@@ -304,6 +351,31 @@ export class ApplicationsService {
     // Only allow cancellation of pending applications
     if (application.status !== ApplicationStatus.PENDING) {
       throw new BadRequestException('Only pending applications can be cancelled');
+    }
+
+    // Get request and patient info for notification
+    const request = await this.requestModel.findById(application.requestId).exec();
+    if (!request) {
+      throw new NotFoundException('Request not found');
+    }
+
+    // Send notification to patient about offer cancellation before deleting
+    try {
+      const patient = await this.userModel.findById(request.patientId).exec();
+      if (patient) {
+        console.log('🗑️ Sending offer cancellation notification to patient:', patient._id.toString());
+        
+        await this.notificationsService.notifyOfferCancelled(
+          patient._id.toString(),
+          user.name || 'A nurse',
+          request._id.toString(),
+          request.title
+        );
+        
+        console.log('✅ Offer cancellation notification sent successfully');
+      }
+    } catch (notificationError) {
+      console.error('❌ Failed to send offer cancellation notification:', notificationError);
     }
 
     // Delete the application

@@ -199,6 +199,50 @@ export class ReviewsController {
     return this.reviewsService.updateReview(reviewId, updateReviewDto, req.user);
   }
 
+  @Get('nurse/:nurseId')
+  @ApiOperation({ 
+    summary: 'Get reviews about a specific nurse',
+    description: 'Retrieve all reviews written by patients about a specific nurse'
+  })
+  @ApiParam({ name: 'nurseId', description: 'Nurse ID' })
+  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (default: 1)' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page (default: 10)' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Nurse reviews retrieved successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        reviews: { type: 'array', items: { $ref: '#/components/schemas/ReviewResponseDto' } },
+        pagination: {
+          type: 'object',
+          properties: {
+            page: { type: 'number' },
+            limit: { type: 'number' },
+            total: { type: 'number' },
+            pages: { type: 'number' }
+          }
+        },
+        stats: {
+          type: 'object',
+          properties: {
+            averageRating: { type: 'number' },
+            totalReviews: { type: 'number' }
+          }
+        }
+      }
+    }
+  })
+  @ApiUnauthorizedResponse({ description: 'Authentication required' })
+  async getReviewsAboutNurse(
+    @Param('nurseId') nurseId: string,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Request() req: any
+  ) {
+    return this.reviewsService.getReviewsAboutNurse(nurseId, page, limit);
+  }
+
   @Delete(':reviewId')
   @ApiOperation({ 
     summary: 'Delete a review',

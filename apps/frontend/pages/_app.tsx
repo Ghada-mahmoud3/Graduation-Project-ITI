@@ -16,6 +16,26 @@ const ChatWidget = dynamic(() => import('../components/ChatWidget'), {
   ssr: false 
 });
 
+// Import NotificationTester for debugging
+const NotificationTester = dynamic(() => import('../components/NotificationTester'), {
+  ssr: false
+});
+
+// Import SyncTester for real-time sync testing
+const SyncTester = dynamic(() => import('../components/SyncTester'), {
+  ssr: false
+});
+
+// Import ApplicationSyncTester for application sync testing
+const ApplicationSyncTester = dynamic(() => import('../components/ApplicationSyncTester'), {
+  ssr: false
+});
+
+// Import RatingTester for rating system testing
+const RatingTester = dynamic(() => import('../components/RatingTester'), {
+  ssr: false
+});
+
 // Import MainLayout with dynamic loading
 const MainLayout = dynamic(() => import('../components/MainLayout'), {
   ssr: false
@@ -108,6 +128,8 @@ function MyApp({ Component, pageProps }: AppProps) {
       
       {/* AI Chat Widget - appears on all pages */}
       <ChatWidget />
+      
+
     </div>
   ) : (
     // Simple placeholder during SSR to avoid hydration issues

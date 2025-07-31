@@ -7,6 +7,7 @@ import { User, UserDocument, UserRole } from '../schemas/user.schema';
 import { NurseProfile, NurseProfileDocument } from '../schemas/nurse-profile.schema';
 import { RegisterDto, LoginDto, AuthResponseDto } from '../dto/auth.dto';
 import { EmailService } from '../email/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class AuthService {
@@ -15,6 +16,7 @@ export class AuthService {
     @InjectModel(NurseProfile.name) private nurseProfileModel: Model<NurseProfileDocument>,
     private jwtService: JwtService,
     private emailService: EmailService,
+    private notificationsService: NotificationsService,
   ) {}
 
   async register(registerDto: RegisterDto): Promise<AuthResponseDto> {
@@ -71,6 +73,43 @@ export class AuthService {
       } catch (error) {
         // Log error but don't fail registration
         console.error('Failed to send welcome email:', error);
+      }
+
+      // Notify admins about new nurse registration
+      try {
+        const admins = await this.userModel.find({ role: UserRole.ADMIN }).exec();
+        const adminIds = admins.map(admin => admin._id.toString());
+        
+        if (adminIds.length > 0) {
+          await this.notificationsService.notifyAdminNewNurse(
+            adminIds,
+            savedUser._id.toString(),
+            savedUser.name,
+            savedUser.email,
+            registerDto.licenseNumber
+          );
+        }
+      } catch (notificationError) {
+        console.error('Failed to send admin notification for new nurse:', notificationError);
+        // Don't fail registration if notification fails
+      }
+    } else if (role === UserRole.PATIENT) {
+      // Notify admins about new patient registration
+      try {
+        const admins = await this.userModel.find({ role: UserRole.ADMIN }).exec();
+        const adminIds = admins.map(admin => admin._id.toString());
+        
+        if (adminIds.length > 0) {
+          await this.notificationsService.notifyAdminNewPatient(
+            adminIds,
+            savedUser._id.toString(),
+            savedUser.name,
+            savedUser.email
+          );
+        }
+      } catch (notificationError) {
+        console.error('Failed to send admin notification for new patient:', notificationError);
+        // Don't fail registration if notification fails
       }
     }
 
